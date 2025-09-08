@@ -1,4 +1,5 @@
 import User from "../models/user.model.js"
+import bcrypt from "bcryptjs"
 
 export const signUp = async(req , res)=>{
     const {name , email,password , userName} = req.body
@@ -17,7 +18,43 @@ export const signUp = async(req , res)=>{
         return res.status(400).json({message:"User with this username already exists"})
     }
 
+    if(password.length<6){
+        return res.status(400).json({message:"Password must be at least 6 characters"})
+    }
 
-    await User.create({name , email,password , userName})
-    res.status(201).json({message:"User created successfully"})
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password , salt)
+    console.log(salt)
+
+
+
+   const newUser =  await User.create({name , email,password:hashedPassword, userName})
+    res.status(201).json(newUser)
+}
+
+
+export const signIn = async(req , res)=>{
+    const {password , userName} = req.body
+    console.log(req.body)
+
+    if(!password || !userName){
+        return res.status(400).json({message:"All fields are required"})
+    }
+
+    const user = await User.findOne({userName})
+    console.log(user)
+    if(!user){
+        return res.status(400).json({message:"Invalid UserName"})
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(password , user.password)
+    console.log(isPasswordCorrect)
+
+    if(!isPasswordCorrect){
+        return res.status(400).json({message:"Invalid Password"})
+    }
+
+    res.status(200).json({message:"SignIn Successful"})
+
+
 }
