@@ -32,6 +32,16 @@ export const signUp = async(req , res)=>{
 
    const newUser =  await User.create({name , email,password:hashedPassword, userName})
     const token = await genToken(newUser._id)
+
+
+    res.cookie("token", token, {
+        httpOnly: true,
+        sameSite:'strict',
+        maxAge: 30*24*60*60*1000 // 30 days
+        
+    });
+
+
     console.log(token)
     res.status(201).json(newUser)
 }
@@ -59,6 +69,12 @@ export const signIn = async(req , res)=>{
     }
 
     const token = await genToken(user._id)
+      res.cookie("token", token, {
+        httpOnly: true,
+        sameSite:'strict',
+        maxAge: 30*24*60*60*1000 // 30 days
+        
+    });
     console.log(token)
 
     res.status(200).json({message:"SignIn Successful", token})    
