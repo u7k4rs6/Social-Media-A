@@ -1,5 +1,7 @@
 import User from "../models/user.model.js"
 import bcrypt from "bcryptjs"
+import genToken from "../config/token.js"
+
 
 export const signUp = async(req , res)=>{
     const {name , email,password , userName} = req.body
@@ -29,6 +31,8 @@ export const signUp = async(req , res)=>{
 
 
    const newUser =  await User.create({name , email,password:hashedPassword, userName})
+    const token = await genToken(newUser._id)
+    console.log(token)
     res.status(201).json(newUser)
 }
 
@@ -54,7 +58,8 @@ export const signIn = async(req , res)=>{
         return res.status(400).json({message:"Invalid Password"})
     }
 
-    res.status(200).json({message:"SignIn Successful"})
+    const token = await genToken(user._id)
+    console.log(token)
 
-
-}
+    res.status(200).json({message:"SignIn Successful", token})    
+ } 
