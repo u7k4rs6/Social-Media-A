@@ -12,6 +12,7 @@ function SignUp() {
 
   const handleSignUp = async () => {
     try {
+        
       const data = await signUpUser({ name, userName, email, password });
       console.log("Signup Success:", data);
     } catch (error) {
