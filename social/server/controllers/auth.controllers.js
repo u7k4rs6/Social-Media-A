@@ -77,5 +77,5 @@ export const signIn = async(req , res)=>{
     });
     console.log(token)
 
-    res.status(200).json({message:"SignIn Successful", token})    
+    res.status(200).json(user)    
  } 

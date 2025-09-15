@@ -1,17 +1,20 @@
 import React, { useState } from "react";
 import logo from "../assets/socialLogo.png";
 import logo2 from "../assets/logo2.png";
-import { Link } from "react-router-dom";
+import { Link , useNavigate } from "react-router-dom";
 import { signInUser } from "../../apiCalls/authCalls";
 
 function SignIn() {
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
 
+  const navigate = useNavigate()
+
   const handleLogIn = async () => {
     try {
       const data = await signInUser({ userName, password });
       console.log("SignIn Success:", data);
+      navigate('/home')
     } catch (error) {
       console.error("Signup Error:", error);
 
