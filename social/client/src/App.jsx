@@ -4,8 +4,15 @@ import { Routes, Route } from "react-router-dom";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import Home from "./pages/Home.jsx";
+import useCurrentUser from "../hooks/useCurrentUser.jsx";
+import { useSelector } from "react-redux";
+
+
 
 function App() {
+  useCurrentUser()
+  const {userData} = useSelector(state=>state.user)
+
   return (
     <>
       <Routes>
