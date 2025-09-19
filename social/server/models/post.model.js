@@ -1,4 +1,4 @@
-import mongoose, { Mongoose } from "mongoose";
+import mongoose from "mongoose";
 
 const postSchema = new mongoose.Schema({
   // author
@@ -9,7 +9,7 @@ const postSchema = new mongoose.Schema({
   // Comments
 
   author: {
-    type: Mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "user",
     required: true,
   },
@@ -32,7 +32,7 @@ const postSchema = new mongoose.Schema({
 
   likes: [
     {
-      type: Mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "user",
     },
   ],
@@ -40,7 +40,7 @@ const postSchema = new mongoose.Schema({
   comments: [
     {
       user: {
-        type: Mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: "user",
       },
 
