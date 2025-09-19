@@ -43,7 +43,7 @@ export const signInUser = async ({ userName, password }) => {
 
 export const getCurrentUser = async () => {
   try {
-    const response = await api.get("/api/user/current");
+    const response = await api.get("/api/user/current", {withCredentials:true});
     return response.data; // return just the data
   } catch (error) {
     // standardize error handling
