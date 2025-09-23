@@ -3,9 +3,15 @@ import React from "react";
 import { GoHomeFill } from "react-icons/go";
 import { FiSearch, FiPlusSquare } from "react-icons/fi";
 import { RxVideo } from "react-icons/rx";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 
 function NavDesign() {
+  const {userData} = useSelector(state =>state.user)
+
+  const navigate = useNavigate()
+
   return (
     <div
       className="
@@ -25,7 +31,7 @@ function NavDesign() {
       <RxVideo className="text-neutral-700 cursor-pointer w-[26px] h-[26px] hover:text-black" />
 
       {/* Avatar */}
-      <div className="w-[40px] h-[40px] rounded-full overflow-hidden border border-neutral-300 cursor-pointer">
+      <div onClick={()=>navigate(`/profile/${userData?.userName}`)} className="w-[40px] h-[40px] rounded-full overflow-hidden border border-neutral-300 cursor-pointer">
         <img  alt="Profile" className="w-full h-full object-cover" />
       </div>
     </div>

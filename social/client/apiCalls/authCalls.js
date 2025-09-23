@@ -50,3 +50,15 @@ export const getCurrentUser = async () => {
     throw error.response?.data?.message || "Something went wrong";
   }
 };
+
+
+ // get User Profile Data
+export const getProfile= async (userName) => {
+  try {
+    const response = await api.get(`/api/user/getprofile/${userName}`, {withCredentials:true});
+    return response.data; // return just the data
+  } catch (error) {
+    // standardize error handling
+    throw error.response?.data?.message || "Something went wrong";
+  }
+};

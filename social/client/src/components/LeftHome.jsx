@@ -1,9 +1,12 @@
 // src/components/LeftHomeDesign.jsx
 import React from "react";
 import logo from "../assets/socialLogo.png";
+import {useSelector} from 'react-redux'
 
 
 function LeftHome() {
+
+ const {userData} = useSelector(state => state.user)
   return (
     <div
       className="
@@ -30,8 +33,8 @@ function LeftHome() {
             <img  alt="profile" className="w-full h-full object-cover" />
           </div>
           <div>
-            <div className="font-semibold text-sm text-neutral-900">username</div>
-            <div className="text-xs text-neutral-500">Full Name</div>
+            <div className="font-semibold text-sm text-neutral-900">{userData.userName}</div>
+            <div className="text-xs text-neutral-500">{userData.name}</div>
           </div>
         </div>
         <div className="text-[#0095F6] text-sm font-semibold cursor-pointer hover:underline">
