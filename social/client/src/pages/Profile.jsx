@@ -1,11 +1,12 @@
 // src/pages/Profile.jsx
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import logo from "../assets/socialLogo.png";
 import Nav from "../components/Nav";
 import { useSelector } from "react-redux";
 import { useEffect } from "react";
 import { getProfile } from "../../apiCalls/authCalls";
 import { useDispatch } from "react-redux";
+
 
 import { setProfileData } from "../redux/userSlice";
 
@@ -17,6 +18,7 @@ function Profile() {
   const { userName } = useParams();
   console.log(userName);
   const dispatch = useDispatch();
+  const navigate = useNavigate()
 
   async function handleProfile() {
     const result = await getProfile(userName);
