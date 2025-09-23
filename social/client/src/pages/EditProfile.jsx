@@ -1,11 +1,30 @@
-
-import { useState } from "react";
+import { useState , useRef } from "react";
 import { MdOutlineKeyboardBackspace } from "react-icons/md";
-
+import { useSelector } from "react-redux";
 
 function EditProfile() {
+  const [profileImage, setProfileImage] = useState("");
+  const imageInput = useRef()
 
-    const [profileImage , setProfileImage]=useState('')
+  console.log(imageInput)
+  const { profileData } = useSelector((state) => state.user);
+
+
+
+
+  const [userName, setUserName] = useState(profileData.userName);
+  const [name, setName] = useState(profileData.name);
+  const [bio, setBio] = useState(profileData.bio);
+
+
+   function handleImage(e){
+      const file = e.target.files[0]
+
+      const imageUrl = URL.createObjectURL(file)
+      console.log(imageUrl)
+      setProfileImage(imageUrl)
+
+   }
 
   return (
     <div
@@ -23,7 +42,6 @@ function EditProfile() {
           <h1 className="text-2xl font-bold text-gray-900">Edit Profile</h1>
         </div>
 
-   
         {/* {message && (
           <div className="p-3 bg-green-100 text-green-700 rounded-md text-sm">
             {message}
@@ -37,23 +55,12 @@ function EditProfile() {
 
         {/* Profile Image */}
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="relative w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full overflow-hidden border-4 border-gray-200 shadow cursor-pointer group"
-
+          <div className="relative w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full overflow-hidden border-4 border-gray-200 shadow cursor-pointer group"
+           onClick={()=>imageInput.current.click()}
           >
-            <input
-              type="file"
-              accept="image/*"
-             
-              hidden
-           
-            />
+            <input type="file" accept="image/*" hidden ref={imageInput} onChange={handleImage} />
             {profileImage ? (
-              <img
-          
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+              <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
                 No Image
@@ -63,10 +70,7 @@ function EditProfile() {
               Change
             </div>
           </div>
-          <button
-
-            className="text-blue-600 text-sm font-semibold hover:underline"
-          >
+          <button className="text-blue-600 text-sm font-semibold hover:underline">
             Change Profile Picture
           </button>
         </div>
@@ -76,29 +80,28 @@ function EditProfile() {
           <input
             type="text"
             placeholder="Enter Your Name"
-           
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="w-full h-[50px] bg-gray-100 border border-gray-300 rounded-lg px-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <input
             type="text"
             placeholder="Enter Your Username"
-         
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
             className="w-full h-[50px] bg-gray-100 border border-gray-300 rounded-lg px-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <input
             type="text"
             placeholder="Bio"
-         
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
             className="w-full h-[50px] bg-gray-100 border border-gray-300 rounded-lg px-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
-         
         </div>
 
         {/* Save Button */}
-        <button 
-         
-          className="w-full h-[50px] bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:opacity-90 transition"
-        >
+        <button className="w-full h-[50px] bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:opacity-90 transition">
           Save Profile
         </button>
       </div>
