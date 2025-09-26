@@ -1,3 +1,4 @@
+import uploadFile from "../config/cloudinary.js";
 import User from "../models/user.model.js";
 
 export const getCurrentUser = async (req, res) => {
@@ -26,5 +27,35 @@ export const getProfile = async (req, res) => {
     return res.status(200).json(user);
   } catch (error) {
     console.error(error);
+  }
+};
+
+export const editProfile = async (req, res) => {
+  try {
+    const { userName, name, bio } = req.body;
+
+    const user = await User.findById(req.userId);
+
+    // userName Validition and Duplication Check- HW
+
+    if (!user) {
+      return res.status(404).json({ message: "user not found" });
+    }
+
+    let profileImage;
+
+    if (req.file) {
+      profileImage = await uploadFile(req.file.path);
+    }
+
+    user.name = name;
+    user.userName = userName;
+    user.bio = bio;
+    user.profileImage = profileImage;
+
+    await user.save();
+    return res.status(201).json(user);
+  } catch (error) {
+    console.log(`Error Updating User -> ${error}`);
   }
 };

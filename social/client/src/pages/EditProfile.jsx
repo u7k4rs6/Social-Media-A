@@ -1,21 +1,19 @@
 import { useState , useRef } from "react";
 import { MdOutlineKeyboardBackspace } from "react-icons/md";
 import { useSelector } from "react-redux";
+import { editProfile } from "../../apiCalls/authCalls";
 
 function EditProfile() {
+
+   const { profileData } = useSelector((state) => state.user);
   const [profileImage, setProfileImage] = useState("");
-  const imageInput = useRef()
-
-  console.log(imageInput)
-  const { profileData } = useSelector((state) => state.user);
-
-
-
-
+  const [serverProfileImage, setSeverProfileImage] = useState(null);
   const [userName, setUserName] = useState(profileData.userName);
   const [name, setName] = useState(profileData.name);
   const [bio, setBio] = useState(profileData.bio);
+  const imageInput = useRef()
 
+  console.log(imageInput)
 
    function handleImage(e){
       const file = e.target.files[0]
@@ -23,7 +21,26 @@ function EditProfile() {
       const imageUrl = URL.createObjectURL(file)
       console.log(imageUrl)
       setProfileImage(imageUrl)
+      setSeverProfileImage(imageUrl)
 
+   }
+
+   async function handleEditProfile(){
+    try {
+      const formData = new FormData()
+      formData.append('name' ,name )
+      formData.append('userName' , userName)
+      formData.append('bio' , bio)
+      if(serverProfileImage){
+        formData.append('profileImage' , serverProfileImage)
+      }
+
+     const result =  await editProfile(formData)
+     console.log(result)
+
+    } catch (error) {
+      console.log(`Cannot update Profile ${error}`)
+    }
    }
 
   return (
@@ -101,7 +118,7 @@ function EditProfile() {
         </div>
 
         {/* Save Button */}
-        <button className="w-full h-[50px] bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:opacity-90 transition">
+        <button onClick={handleEditProfile} className="w-full h-[50px] bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:opacity-90 transition">
           Save Profile
         </button>
       </div>
