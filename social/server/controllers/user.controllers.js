@@ -42,10 +42,11 @@ export const editProfile = async (req, res) => {
       return res.status(404).json({ message: "user not found" });
     }
 
-    let profileImage;
+    let profileImage='';
 
     if (req.file) {
       profileImage = await uploadFile(req.file.path);
+      console.log(profileImage)
     }
 
     user.name = name;

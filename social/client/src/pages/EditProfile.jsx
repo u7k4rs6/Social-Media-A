@@ -1,7 +1,9 @@
 import { useState , useRef } from "react";
 import { MdOutlineKeyboardBackspace } from "react-icons/md";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { editProfile } from "../../apiCalls/authCalls";
+import { setProfileData, setUserData } from "../redux/userSlice";
+
 
 function EditProfile() {
 
@@ -14,6 +16,7 @@ function EditProfile() {
   const imageInput = useRef()
 
   console.log(imageInput)
+  const dispatch = useDispatch()
 
    function handleImage(e){
       const file = e.target.files[0]
@@ -21,7 +24,7 @@ function EditProfile() {
       const imageUrl = URL.createObjectURL(file)
       console.log(imageUrl)
       setProfileImage(imageUrl)
-      setSeverProfileImage(imageUrl)
+      setSeverProfileImage(file)
 
    }
 
@@ -37,6 +40,10 @@ function EditProfile() {
 
      const result =  await editProfile(formData)
      console.log(result)
+     dispatch(setUserData(result))
+     dispatch(setProfileData(result))
+     console.log("data Saved in Redux")
+      
 
     } catch (error) {
       console.log(`Cannot update Profile ${error}`)
