@@ -2,14 +2,11 @@
 import React, { useState, useRef } from "react";
 import { MdOutlineKeyboardBackspace } from "react-icons/md";
 import { FiPlusSquare } from "react-icons/fi";
-
-
-import axios from "axios";
+import { ClipLoader } from "react-spinners";
 import logo2 from "../assets/logo2.png";
-
+import { createPost } from "../../apiCalls/authCalls";
 
 function Upload() {
-
   const [uploadType, setUploadType] = useState("post");
   const [frontendMedia, setFrontendMedia] = useState(null);
   const [mediaType, setMediaType] = useState("");
@@ -17,36 +14,46 @@ function Upload() {
   const [backendMedia, setBackendMedia] = useState(null);
   const [loading] = useState(false);
 
-  const mediaInput = useRef()
+  const mediaInput = useRef();
 
-
-//   const dispatch = useDispatch()
+  //   const dispatch = useDispatch()
 
   const handleMedia = (e) => {
-   const file = e.target.files[0]
-   const mediaURL =URL.createObjectURL(file)
+    const file = e.target.files[0];
+    const mediaURL = URL.createObjectURL(file);
 
-   if(file?.type.includes('image')){
-     setMediaType('image')
-   }else if(file?.type.includes('video')){
-     setMediaType('video')
-   }
-   else{
-     setMediaType(null)
-     // Error Statement
-   }
-    setFrontendMedia(mediaURL)
-  
+    if (file?.type.includes("image")) {
+      setMediaType("image");
+    } else if (file?.type.includes("video")) {
+      setMediaType("video");
+    } else {
+      setMediaType(null);
+      // Error Statement
+    }
+    setFrontendMedia(mediaURL);
+    setBackendMedia(file);
   };
 
-   console.log(mediaType)
+  console.log(mediaType);
 
   const uploadPost = async () => {
-    
+    let formData = new FormData();
+     formData.append("mediaType", mediaType);
+     formData.append("mediaUrl", backendMedia);
+     formData.append("caption", caption);
+
+  for (let [key, value] of formData.entries()) {
+    console.log(`${key}:`, value);
+  }
+
+
+
+    const result = await createPost(formData);
+    console.log(result)
   };
 
   const handleUpload = () => {
-   
+    uploadPost();
   };
 
   return (
