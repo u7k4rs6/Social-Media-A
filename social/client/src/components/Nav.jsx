@@ -27,7 +27,7 @@ function NavDesign() {
       {/* Icons */}
       <GoHomeFill className="text-neutral-700 cursor-pointer w-[24px] h-[24px] hover:text-black" />
       <FiSearch className="text-neutral-700 cursor-pointer w-[24px] h-[24px] hover:text-black" />
-      <FiPlusSquare className="text-neutral-700 cursor-pointer w-[24px] h-[24px] hover:text-black" />
+      <FiPlusSquare  onClick={()=>navigate(`/upload`)} className="text-neutral-700 cursor-pointer w-[24px] h-[24px] hover:text-black" />
       <RxVideo className="text-neutral-700 cursor-pointer w-[26px] h-[26px] hover:text-black" />
 
       {/* Avatar */}
