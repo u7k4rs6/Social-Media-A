@@ -8,7 +8,7 @@ import isAuth from '../middlewares/isAuth.js'
 const postRouter = express.Router()
 
 
-postRouter.post('/uploadPost',isAuth , upload.single('mediaUrl'),  uploadPost )
+postRouter.post('/uploadPost',isAuth , upload.single('mediaUrl'), uploadPost )
 
 
 

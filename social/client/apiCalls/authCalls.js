@@ -77,7 +77,8 @@ export const editProfile= async (formData) => {
 
 export const createPost = async(formData)=>{
    try {
-    const response = await api.post(`/api/post/uploadPost/`,formData,  {withCredentials:true});
+    const response = await api.post(`/api/post/uploadPost/`,formData,
+         {withCredentials:true}  );
     return response.data; // return just the data
   } catch (error) {
     // standardize error handling

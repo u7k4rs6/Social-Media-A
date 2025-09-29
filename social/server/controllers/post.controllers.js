@@ -5,27 +5,61 @@ import User from "../models/user.model.js";
 export const uploadPost = async (req, res) => {
   try {
     // caption
-  //mediaType
-  // mediaUrl
-  const { mediaType, caption } = req.body;
+    //mediaType
+    // mediaUrl
+    const { mediaType, caption } = req.body;
 
-  let mediaUrl = "";
-  if (req.file) {
-    mediaUrl = await uploadFile(req.file.path);
-    console.log(mediaUrl)
-  } else {
-    return res.status(400).json({ message: "No Media Added" });
-  }
+    console.log("Request body:", req.body);
+    console.log("Request file:", req.file);
 
-  // create the post
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
 
-  const post = await Post.create({ mediaType, caption, mediaUrl, author:req.userId });
-  return res.status(201).json(post);
+    console.log("File path:", req.file.path); // Check if path exists
 
-  // userName
-  // profileImage
+    let mediaUrl = "";
+    try {
+      mediaUrl = await uploadFile(req.file.path);
+      console.log("Cloudinary URL:", mediaUrl);
+    } catch (uploadError) {
+      console.error("Cloudinary upload error:", uploadError);
+      return res
+        .status(500)
+        .json({ message: `Cloudinary upload failed: ${uploadError.message}` });
+    }
+
+    if (!mediaUrl) {
+      return res
+        .status(500)
+        .json({ message: "Failed to get media URL from Cloudinary" });
+    }
+
+    // create the post
+
+    const post = await Post.create({
+      mediaType,
+      caption,
+      mediaUrl,
+      author: req.userId,
+    });
+    // we need to show posts for a individual user
+    const user = await User.findById(req.userId).populate("posts");
+    user.posts.push(post._id);
+    await user.save();
+
+    // we need to show posts on the feed
+
+    const populatedPost = await Post.findById(post._id).populate(
+      "author",
+      "userName profileImage"
+    );
+
+    return res.status(201).json(populatedPost);
+
+    // userName
+    // profileImage
   } catch (error) {
-    res.status(500).json({message:`Cannot Upload$ ${error}`})
+    res.status(500).json({ message: `Cannot Upload$ ${error}` });
   }
-  
 };

@@ -5,8 +5,11 @@ import { FiPlusSquare } from "react-icons/fi";
 import { ClipLoader } from "react-spinners";
 import logo2 from "../assets/logo2.png";
 import { createPost } from "../../apiCalls/authCalls";
+import { useDispatch, useSelector } from "react-redux";
+import { setPostData } from "../redux/postSlice";
 
 function Upload() {
+  const {postData} =   useSelector(state=>state.post)
   const [uploadType, setUploadType] = useState("post");
   const [frontendMedia, setFrontendMedia] = useState(null);
   const [mediaType, setMediaType] = useState("");
@@ -15,8 +18,8 @@ function Upload() {
   const [loading] = useState(false);
 
   const mediaInput = useRef();
+  const dispatch = useDispatch()
 
-  //   const dispatch = useDispatch()
 
   const handleMedia = (e) => {
     const file = e.target.files[0];
@@ -49,7 +52,8 @@ function Upload() {
 
 
     const result = await createPost(formData);
-    console.log(result)
+    dispatch(setPostData([...postData , result]))
+
   };
 
   const handleUpload = () => {
