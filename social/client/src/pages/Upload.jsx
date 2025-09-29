@@ -17,12 +17,29 @@ function Upload() {
   const [backendMedia, setBackendMedia] = useState(null);
   const [loading] = useState(false);
 
+  const mediaInput = useRef()
+
 
 //   const dispatch = useDispatch()
 
   const handleMedia = (e) => {
-    
+   const file = e.target.files[0]
+   const mediaURL =URL.createObjectURL(file)
+
+   if(file?.type.includes('image')){
+     setMediaType('image')
+   }else if(file?.type.includes('video')){
+     setMediaType('video')
+   }
+   else{
+     setMediaType(null)
+     // Error Statement
+   }
+    setFrontendMedia(mediaURL)
+  
   };
+
+   console.log(mediaType)
 
   const uploadPost = async () => {
     
@@ -111,7 +128,7 @@ function Upload() {
                 type="file"
                 accept="image/*,video/*"
                 hidden
-           
+                ref={mediaInput}
                 onChange={handleMedia}
               />
               <FiPlusSquare className="text-neutral-500 w-8 h-8" />
