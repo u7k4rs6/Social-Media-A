@@ -63,3 +63,50 @@ export const uploadPost = async (req, res) => {
     res.status(500).json({ message: `Cannot Upload$ ${error}` });
   }
 };
+export const getAllPosts = async (req, res) => {
+  try {
+    const posts = await Post.find({}).populate(
+      "author",
+      "userName profileImage"
+    );
+    return res.status(200).json(posts);
+  } catch (error) {
+    return res.status(404).json({ message: "No Posts Found" });
+  }
+};
+
+export const like = async (req, res) => {
+  // post id
+  // userId
+  // already liked the post - dislike
+  // if not - like
+  // userName
+  const postId = req.params.postId;
+
+  const post = await Post.findById(postId);
+
+  if (!post) {
+    return res.status(404).json({ message: "No post Found" });
+  }
+
+  // if this is already liked?
+  // userId -> likes[] - all user Ids
+
+  const alreadyLiked = post.likes.some(
+    (id) => id.toString() === req.userId.toString()
+  );
+
+  if (alreadyLiked) {
+    // post is already liked
+    post.likes = post.likes.filter(
+      (id) => id.toString() !== req.userId.toString()
+    );
+  } else {
+    post.likes.push(req.userId);
+  }
+
+  await post.save();
+  await post.populate("author", "userName");
+
+  return res.status(200).json(post);
+};
