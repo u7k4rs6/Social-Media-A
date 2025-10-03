@@ -110,3 +110,12 @@ export const like = async (req, res) => {
 
   return res.status(200).json(post);
 };
+
+
+export const comment  = async(req , res)=>{
+   // postid
+   // userid
+   // userName
+   // text
+   // createdAt
+}
