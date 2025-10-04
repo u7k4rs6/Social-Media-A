@@ -76,7 +76,6 @@ export const getAllPosts = async (req, res) => {
       author: { $in: userIds }
     })
       .populate("author", "name userName profileImage")
-      .populate("comments.author", "name userName profileImage")
       .sort({ createdAt: -1 }); // Latest posts first
     
     return res.status(200).json(posts);
