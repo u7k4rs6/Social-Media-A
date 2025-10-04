@@ -136,6 +136,16 @@ export const getFollowStatus = async (userId) => {
   }
 }
 
+// 
+export const getSuggestions = async () => {
+  try {
+    const response = await api.get(`/api/user/suggested`)
+    return response.data
+  } catch (error) {
+    throw error.response?.data?.message || "Failed to fetch user profile data";
+  }
+}
+
 
 
 

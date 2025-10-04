@@ -11,12 +11,14 @@ import Profile from "./pages/Profile.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
 import Upload from "./pages/Upload.jsx";
 import useAllPosts from "../hooks/useAllPosts.jsx";
+import getSuggestedUsers from "../hooks/getSuggestedUsers.jsx";
 
 
 
 function App() {
   useCurrentUser()
   useAllPosts()
+  getSuggestedUsers()
   const {userData ,profileData} = useSelector(state=>state.user)
 
   return (
