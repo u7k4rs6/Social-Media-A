@@ -1,6 +1,3 @@
-Here’s your entire **Real-Time Chat Implementation Guide with Socket.IO** converted into clean, structured **Markdown format** — perfect for GitHub, Notion, or documentation portals.
-
-You can copy this text directly into a `.md` file (e.g., `RealTimeChatGuide.md`).
 
 ---
 
