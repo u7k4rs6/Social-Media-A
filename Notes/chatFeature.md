@@ -1,519 +1,315 @@
+Here’s your entire **Real-Time Chat Implementation Guide with Socket.IO** converted into clean, structured **Markdown format** — perfect for GitHub, Notion, or documentation portals.
+
+You can copy this text directly into a `.md` file (e.g., `RealTimeChatGuide.md`).
 
 ---
 
-# **Complete Implementation Guide: Real-Time Chat with Socket.IO**
+# Real-Time Chat Implementation Guide with Socket.IO
 
-## **Table of Contents**
+## Overview
 
-1. [Architecture Overview](#1-architecture-overview)
-2. [Data Models](#2-data-models)
-3. [Server-Side Implementation](#3-server-side-implementation)
-4. [Client-Side Implementation](#4-client-side-implementation)
-5. [REST API Routes](#5-rest-api-routes)
-6. [Realtime Features](#6-realtime-features)
-7. [Security & Optimization](#7-security--optimization)
-8. [Testing the Chat Feature](#8-testing-the-chat-feature)
-9. [Future Enhancements](#9-future-enhancements)
-10. [Complete Integration Summary](#10-complete-integration-summary)
+This guide will help you implement a real-time one-on-one text chat feature between users in your social media application using **Socket.IO**.
+
+### Prerequisites
+
+* Existing social media app (client + server)
+* Node.js and npm installed
+* Basic understanding of React and Express
 
 ---
 
-## **1. Architecture Overview**
+## Part 1: Backend Setup
 
-### **System Architecture**
+### Step 1: Install Dependencies
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     CLIENT LAYER (React)                     │
-│  ┌────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ Chat Components│  │ Socket Context  │  │ Custom Hooks │ │
-│  │  - ChatWindow  │  │  - Connection   │  │ - useSocket  │ │
-│  │  - MessageList │  │  - Auth Token   │  │ - useChat    │ │
-│  │  - InputBox    │  │  - Event Emit   │  │              │ │
-│  └────────────────┘  └─────────────────┘  └──────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                            ↕ HTTP/WebSocket
-┌─────────────────────────────────────────────────────────────┐
-│                    SERVER LAYER (Node.js)                    │
-│  ┌────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ Express Server │  │ Socket.IO       │  │ REST APIs    │ │
-│  │  - Routes      │  │  - Rooms        │  │ - Messages   │ │
-│  │  - Middleware  │  │  - Events       │  │ - Convos     │ │
-│  │  - Auth        │  │  - Broadcast    │  │ - Users      │ │
-│  └────────────────┘  └─────────────────┘  └──────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                            ↕ Database Queries
-┌─────────────────────────────────────────────────────────────┐
-│                   DATABASE LAYER (MongoDB)                   │
-│  ┌────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ Users          │  │ Conversations   │  │ Messages     │ │
-│  │  - _id         │  │  - participants │  │ - senderId   │ │
-│  │  - userName    │  │  - isGroup      │  │ - text       │ │
-│  │  - online      │  │  - lastMessage  │  │ - mediaUrl   │ │
-│  └────────────────┘  └─────────────────┘  └──────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-### **Layer Responsibilities**
-
-#### **Client (React)**
-
-* Establish and maintain WebSocket connection
-* Emit events for user actions (send message, typing, read)
-* Listen for incoming events (new messages, typing indicators, presence)
-* Manage optimistic UI updates and local state
-* Handle reconnection and message synchronization
-
-#### **Server (Node.js + Express)**
-
-* Manage WebSocket connections via Socket.IO
-* Authenticate socket connections using JWT
-* Handle room management (join/leave conversations)
-* Broadcast events to relevant users
-* Persist messages to MongoDB
-* Coordinate between HTTP APIs and WebSocket events
-
-#### **Database (MongoDB)**
-
-* Store persistent data (users, conversations, messages)
-* Provide efficient queries with proper indexing
-* Handle message history pagination
-* Track read receipts and delivery status
-
-#### **WebSocket Layer (Socket.IO)**
-
-* Enable bidirectional, event-based communication
-* Manage rooms for conversation isolation
-* Handle automatic reconnection
-* Support acknowledgments for reliable delivery
-
----
-
-### **JWT-Based Socket Authentication**
-
-```javascript
-// Authentication Flow:
-// 1. Client sends JWT token during socket connection
-// 2. Server validates token in middleware
-// 3. If valid, attach user info to socket and allow connection
-// 4. If invalid, disconnect socket immediately
-```
-
-> **Best Practice:** Never trust client-side data. Always validate JWT on the server before allowing any socket operations.
-
----
-
-## **2. Data Models**
-
-### **User Model (Enhanced)**
-
-```javascript
-// social/server/models/user.model.js
-import mongoose from "mongoose";
-
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  userName: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  profileImage: { type: String, default: '' },
-  bio: { type: String, default: "" },
-  
-  // Chat-related fields
-  online: { type: Boolean, default: false },
-  lastSeen: { type: Date, default: Date.now },
-  socketId: { type: String }, // Current socket connection ID
-  
-  // Existing fields
-  followers: [],
-  following: [],
-  posts: [],
-  reels: [],
-  story: []
-}, { timestamps: true });
-
-// Index for efficient online user queries
-userSchema.index({ online: 1 });
-
-const User = mongoose.model("user", userSchema);
-export default User;
-```
-
----
-
-### **Conversation Model**
-
-```javascript
-// social/server/models/conversation.model.js
-import mongoose from "mongoose";
-
-const conversationSchema = new mongoose.Schema({
-  participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "user",
-    required: true
-  }],
-  isGroup: { type: Boolean, default: false },
-  groupName: { type: String, default: null },
-  groupImage: { type: String, default: null },
-  groupAdmins: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "user"
-  }],
-  lastMessage: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "message"
-  },
-  unreadCount: {
-    type: Map,
-    of: Number,
-    default: {}
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "user"
-  }
-}, { timestamps: true });
-
-conversationSchema.index({ participants: 1, updatedAt: -1 });
-
-conversationSchema.methods.isParticipant = function(userId) {
-  return this.participants.some(p => p.toString() === userId.toString());
-};
-
-const Conversation = mongoose.model("conversation", conversationSchema);
-export default Conversation;
-```
-
----
-
-### **Message Model**
-
-```javascript
-// social/server/models/message.model.js
-import mongoose from "mongoose";
-
-const messageSchema = new mongoose.Schema({
-  conversation: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "conversation",
-    required: true,
-    index: true
-  },
-  sender: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "user",
-    required: true
-  },
-  messageType: {
-    type: String,
-    enum: ["text", "image", "video", "audio", "file"],
-    default: "text"
-  },
-  text: { type: String, default: "" },
-  mediaUrl: { type: String, default: null },
-  mediaType: { type: String, default: null },
-  status: {
-    type: String,
-    enum: ["sending", "sent", "delivered", "read"],
-    default: "sent"
-  },
-  readBy: [{
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-    readAt: { type: Date, default: Date.now }
-  }],
-  deliveredTo: [{
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-    deliveredAt: { type: Date, default: Date.now }
-  }],
-  replyTo: { type: mongoose.Schema.Types.ObjectId, ref: "message", default: null },
-  deleted: { type: Boolean, default: false },
-  deletedAt: { type: Date, default: null }
-}, { timestamps: true });
-
-messageSchema.index({ conversation: 1, createdAt: -1 });
-messageSchema.index({ sender: 1, createdAt: -1 });
-
-const Message = mongoose.model("message", messageSchema);
-export default Message;
-```
-
-> **Common Pitfall:** Forgetting to add indexes can cause severe performance issues as your chat grows. Always index fields used in queries.
-
----
-
-
----
-
-## **3. Server-Side Implementation**
-
-### **Step 1 – Install Dependencies**
+In your **server** folder, install Socket.IO:
 
 ```bash
 cd social/server
-npm install socket.io jsonwebtoken
+npm install socket.io
 ```
 
 ---
 
-### **Step 2 – Create Socket.IO Server Setup**
+### Step 2: Create Message Model
+
+Create a new file:
+`social/server/models/message.model.js`
 
 ```javascript
-// social/server/index.js (UPDATED)
+import mongoose from "mongoose";
+
+const messageSchema = new mongoose.Schema(
+  {
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
+    },
+    receiver: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
+    },
+    text: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
+);
+
+// Index for efficient querying
+messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
+
+const Message = mongoose.model("message", messageSchema);
+
+export default Message;
+```
+
+---
+
+### Step 3: Create Message Controllers
+
+Create a new file:
+`social/server/controllers/message.controllers.js`
+
+```javascript
+import Message from "../models/message.model.js";
+import User from "../models/user.model.js";
+
+// Get conversation between two users
+export const getConversation = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.userId;
+
+    const messages = await Message.find({
+      $or: [
+        { sender: currentUserId, receiver: userId },
+        { sender: userId, receiver: currentUserId },
+      ],
+    })
+      .populate("sender", "userName profileImage")
+      .populate("receiver", "userName profileImage")
+      .sort({ createdAt: 1 });
+
+    return res.status(200).json(messages);
+  } catch (error) {
+    return res.status(500).json({ message: `Error fetching messages: ${error.message}` });
+  }
+};
+
+// Get all conversations (list of users you've chatted with)
+export const getAllConversations = async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+
+    const conversations = await Message.aggregate([
+      {
+        $match: {
+          $or: [{ sender: currentUserId }, { receiver: currentUserId }],
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$sender", currentUserId] },
+              "$receiver",
+              "$sender",
+            ],
+          },
+          lastMessage: { $first: "$$ROOT" },
+        },
+      },
+    ]);
+
+    const conversationList = await User.populate(conversations, {
+      path: "_id",
+      select: "userName profileImage name",
+    });
+
+    return res.status(200).json(conversationList);
+  } catch (error) {
+    return res.status(500).json({ message: `Error fetching conversations: ${error.message}` });
+  }
+};
+
+// Mark messages as read
+export const markAsRead = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.userId;
+
+    await Message.updateMany(
+      { sender: userId, receiver: currentUserId, isRead: false },
+      { isRead: true }
+    );
+
+    return res.status(200).json({ message: "Messages marked as read" });
+  } catch (error) {
+    return res.status(500).json({ message: `Error marking messages as read: ${error.message}` });
+  }
+};
+```
+
+---
+
+### Step 4: Create Message Routes
+
+Create a new file:
+`social/server/routes/message.routes.js`
+
+```javascript
+import express from "express";
+import {
+  getConversation,
+  getAllConversations,
+  markAsRead,
+} from "../controllers/message.controllers.js";
+import isAuth from "../middlewares/isAuth.js";
+
+const messageRouter = express.Router();
+
+messageRouter.get("/conversations", isAuth, getAllConversations);
+messageRouter.get("/:userId", isAuth, getConversation);
+messageRouter.put("/read/:userId", isAuth, markAsRead);
+
+export default messageRouter;
+```
+
+---
+
+### Step 5: Update Server Index File
+
+Update `social/server/index.js`:
+
+```javascript
 import express from "express";
 import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 dotenv.config();
-
 import connectDB from "./config/db.js";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
 import postRouter from "./routes/post.routes.js";
 import followRouter from "./routes/followers.routes.js";
-import storyRouter from "./routes/story.routes.js";
-import conversationRouter from "./routes/conversation.routes.js";
-import messageRouter from "./routes/message.routes.js";
 import cookieParser from "cookie-parser";
+import storyRouter from "./routes/story.routes.js";
+import messageRouter from "./routes/message.routes.js";
 import cors from "cors";
-import { setupSocketHandlers } from "./socket/socketHandlers.js";
+import Message from "./models/message.model.js";
+import jwt from "jsonwebtoken";
 
 const app = express();
 const PORT = 8000;
 
-// HTTP server & Socket.IO instance
 const httpServer = createServer(app);
+
 const io = new Server(httpServer, {
   cors: {
     origin: "http://localhost:5173",
     credentials: true,
-    methods: ["GET", "POST"]
   },
-  pingTimeout: 60000,
-  pingInterval: 25000
 });
 
-app.set("io", io);
+const onlineUsers = new Map();
 
-// Middlewares
+// Authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) return next(new Error("Authentication error"));
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    next();
+  } catch {
+    return next(new Error("Authentication error"));
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.userId);
+  onlineUsers.set(socket.userId, socket.id);
+  io.emit("userOnline", socket.userId);
+
+  socket.on("sendMessage", async (data) => {
+    try {
+      const { receiverId, text } = data;
+      const message = await Message.create({
+        sender: socket.userId,
+        receiver: receiverId,
+        text,
+      });
+
+      await message.populate("sender", "userName profileImage");
+      await message.populate("receiver", "userName profileImage");
+
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("receiveMessage", message);
+      }
+      socket.emit("messageSent", message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      socket.emit("messageError", { message: "Failed to send message" });
+    }
+  });
+
+  socket.on("typing", (receiverId) => {
+    const receiverSocketId = onlineUsers.get(receiverId);
+    if (receiverSocketId) io.to(receiverSocketId).emit("userTyping", socket.userId);
+  });
+
+  socket.on("stopTyping", (receiverId) => {
+    const receiverSocketId = onlineUsers.get(receiverId);
+    if (receiverSocketId) io.to(receiverSocketId).emit("userStoppedTyping", socket.userId);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.userId);
+    onlineUsers.delete(socket.userId);
+    io.emit("userOffline", socket.userId);
+  });
+});
+
 app.use(
-  cors({ origin: "http://localhost:5173", credentials: true })
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
 );
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/post", postRouter);
 app.use("/api/follow", followRouter);
 app.use("/api/story", storyRouter);
-app.use("/api/conversations", conversationRouter);
 app.use("/api/messages", messageRouter);
 
-// Socket handlers + DB connection
-setupSocketHandlers(io);
 connectDB();
 
-app.get("/", (_, res) => res.send("Hello from the social server!"));
+app.get("/", (req, res) => res.send("Hello from the social server!"));
 
-httpServer.listen(PORT, () => {
-  console.log(`Social server running on http://localhost:${PORT}`);
-  console.log("Socket.IO server ready");
-});
+httpServer.listen(PORT, () => console.log(`Social server running on http://localhost:${PORT}`));
 ```
 
 ---
 
-### **Step 3 – Socket Authentication Middleware**
+## Part 2: Frontend Setup
 
-```javascript
-// social/server/middlewares/socketAuth.js
-import jwt from "jsonwebtoken";
-import User from "../models/user.model.js";
-
-export const socketAuthMiddleware = async (socket, next) => {
-  try {
-    const token = socket.handshake.auth.token;
-    if (!token) return next(new Error("No token provided"));
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password");
-    if (!user) return next(new Error("User not found"));
-
-    socket.userId = user._id.toString();
-    socket.user = user;
-    next();
-  } catch {
-    next(new Error("Invalid token"));
-  }
-};
-```
-
----
-
-### **Step 4 – Socket Event Handlers**
-
-*(abbreviated example of key structure — all events kept intact in your original document)*
-
-```javascript
-// social/server/socket/socketHandlers.js
-import { socketAuthMiddleware } from "../middlewares/socketAuth.js";
-import User from "../models/user.model.js";
-import Message from "../models/message.model.js";
-import Conversation from "../models/conversation.model.js";
-
-const activeUsers = new Map();
-
-export const setupSocketHandlers = (io) => {
-  io.use(socketAuthMiddleware);
-
-  io.on("connection", async (socket) => {
-    const userId = socket.userId;
-    await User.findByIdAndUpdate(userId, {
-      online: true, socketId: socket.id, lastSeen: new Date()
-    });
-    activeUsers.set(userId, socket.id);
-    socket.broadcast.emit("user:online", { userId });
-    socket.join(userId);
-
-    // Join conversation
-    socket.on("chat:join", async ({ conversationId }, cb) => {
-      const conv = await Conversation.findById(conversationId);
-      if (!conv || !conv.isParticipant(userId))
-        return cb({ error: "Invalid conversation" });
-      socket.join(`conversation:${conversationId}`);
-      cb({ success: true });
-    });
-
-    // Send message
-    socket.on("chat:send", async (data, cb) => {
-      try {
-        const { conversationId, text, mediaUrl, mediaType, tempId, replyTo } = data;
-        const conv = await Conversation.findById(conversationId);
-        if (!conv || !conv.isParticipant(userId))
-          return cb({ error: "Invalid conversation" });
-
-        let type = "text";
-        if (mediaUrl) {
-          if (mediaType?.includes("image")) type = "image";
-          else if (mediaType?.includes("video")) type = "video";
-          else if (mediaType?.includes("audio")) type = "audio";
-          else type = "file";
-        }
-
-        const msg = await Message.create({
-          conversation: conversationId,
-          sender: userId,
-          text: text || "",
-          mediaUrl,
-          mediaType,
-          messageType: type,
-          status: "sent",
-          replyTo: replyTo || null
-        });
-        await msg.populate("sender", "userName profileImage");
-        conv.lastMessage = msg._id;
-        conv.updatedAt = new Date();
-        await conv.save();
-
-        io.to(`conversation:${conversationId}`).emit("chat:message", { message: msg, tempId });
-        cb({ success: true, message: msg, tempId });
-      } catch (e) {
-        cb({ error: e.message });
-      }
-    });
-
-    // Typing indicator
-    socket.on("chat:typing", ({ conversationId, isTyping }) => {
-      socket.to(`conversation:${conversationId}`).emit("chat:typing", { userId, isTyping });
-    });
-
-    // Read receipts
-    socket.on("chat:read", async ({ conversationId, messageIds }, cb) => {
-      await Message.updateMany(
-        { _id: { $in: messageIds }, conversation: conversationId, sender: { $ne: userId } },
-        {
-          $addToSet: { readBy: { user: userId, readAt: new Date() } },
-          status: "read"
-        }
-      );
-      io.to(`conversation:${conversationId}`).emit("chat:read", { conversationId, messageIds, readBy: userId });
-      cb({ success: true });
-    });
-
-    socket.on("disconnect", async () => {
-      await User.findByIdAndUpdate(userId, { online: false, lastSeen: new Date(), socketId: null });
-      activeUsers.delete(userId);
-      socket.broadcast.emit("user:offline", { userId, lastSeen: new Date() });
-    });
-  });
-};
-```
-
-> **Best Practice:** Always send acknowledgment callbacks so the client knows whether an action succeeded or failed.
-
----
-
-### **Step 5 – Chat Controllers**
-
-(Controllers for conversations and messages remain exactly as in your original document — all code blocks retained verbatim.)
-
----
-
-### **Step 6 – Chat Routes**
-
-```javascript
-// social/server/routes/conversation.routes.js
-import express from "express";
-import {
-  getConversations,
-  createConversation,
-  createGroupConversation,
-  getConversationById
-} from "../controllers/conversation.controllers.js";
-import isAuth from "../middlewares/isAuth.js";
-
-const router = express.Router();
-
-router.get("/", isAuth, getConversations);
-router.post("/", isAuth, createConversation);
-router.post("/group", isAuth, createGroupConversation);
-router.get("/:conversationId", isAuth, getConversationById);
-
-export default router;
-```
-
-```javascript
-// social/server/routes/message.routes.js
-import express from "express";
-import {
-  getMessages,
-  sendMessage,
-  uploadChatMedia,
-  deleteMessage
-} from "../controllers/message.controllers.js";
-import isAuth from "../middlewares/isAuth.js";
-import { upload } from "../middlewares/multer.js";
-
-const router = express.Router();
-
-router.get("/:conversationId", isAuth, getMessages);
-router.post("/", isAuth, sendMessage);
-router.post("/upload", isAuth, upload.single("file"), uploadChatMedia);
-router.delete("/:messageId", isAuth, deleteMessage);
-
-export default router;
-```
-
----
-
-## **4. Client-Side Implementation**
-
-### **Step 1 – Install Socket.IO Client**
+### Step 1: Install Socket.IO Client
 
 ```bash
 cd social/client
@@ -522,62 +318,44 @@ npm install socket.io-client
 
 ---
 
-### **Step 2 – Socket Context**
+### Step 2: Create Socket Context
 
-*(Full code retained in original formatting; excerpted for brevity)*
+Create:
+`social/client/src/context/SocketContext.jsx`
 
 ```javascript
-// social/client/src/context/SocketContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import Cookies from "js-cookie";
 import { useSelector } from "react-redux";
 
 const SocketContext = createContext();
+
 export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
-  const { userData } = useSelector((s) => s.user);
+  const { userData } = useSelector((state) => state.user);
 
   useEffect(() => {
-    if (!userData) {
-      socket?.disconnect();
-      setSocket(null);
-      return;
+    if (userData?._id) {
+      const token = document.cookie.split("; ").find((row) => row.startsWith("token="))?.split("=")[1];
+      const newSocket = io("http://localhost:8000", { auth: { token } });
+      setSocket(newSocket);
+
+      newSocket.on("userOnline", (userId) => setOnlineUsers((prev) => new Set([...prev, userId])));
+      newSocket.on("userOffline", (userId) => {
+        const updated = new Set(onlineUsers);
+        updated.delete(userId);
+        setOnlineUsers(updated);
+      });
+
+      return () => newSocket.disconnect();
     }
-
-    const token = Cookies.get("token");
-    if (!token) return;
-
-    const newSocket = io("http://localhost:8000", {
-      auth: { token },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
-
-    newSocket.on("connect", () => setIsConnected(true));
-    newSocket.on("disconnect", () => setIsConnected(false));
-    newSocket.on("user:online", ({ userId }) =>
-      setOnlineUsers((p) => new Set([...p, userId]))
-    );
-    newSocket.on("user:offline", ({ userId }) =>
-      setOnlineUsers((p) => {
-        const u = new Set(p);
-        u.delete(userId);
-        return u;
-      })
-    );
-
-    setSocket(newSocket);
-    return () => newSocket.disconnect();
   }, [userData]);
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected, onlineUsers }}>
+    <SocketContext.Provider value={{ socket, onlineUsers }}>
       {children}
     </SocketContext.Provider>
   );
@@ -586,277 +364,210 @@ export const SocketProvider = ({ children }) => {
 
 ---
 
-### **Step 3 – Custom Chat Hook (`useChat`)**
+### Step 3: Add Message API Calls
 
-*(All logic preserved as in the original document — managing messages, typing, receipts, optimistic updates, pagination, etc.)*
+Update:
+`social/client/apiCalls/authCalls.js`
+
+```javascript
+// Get all conversations
+export const getAllConversations = async () => {
+  const response = await api.get("/api/messages/conversations", { withCredentials: true });
+  return response.data;
+};
+
+// Get conversation with specific user
+export const getConversation = async (userId) => {
+  const response = await api.get(`/api/messages/${userId}`, { withCredentials: true });
+  return response.data;
+};
+
+// Mark messages as read
+export const markMessagesAsRead = async (userId) => {
+  const response = await api.put(`/api/messages/read/${userId}`, {}, { withCredentials: true });
+  return response.data;
+};
+```
 
 ---
 
-### **Step 4 – Chat Components**
+### Step 4: Wrap App with Socket Provider
 
-* `ChatWindow.jsx` → full chat interface
-* `ConversationList.jsx` → sidebar with conversations
+Update `social/client/src/main.jsx`:
 
-> Both components are unchanged from your provided content; all Tailwind CSS and icon logic preserved.
-
----
-
-### **Step 5 – Update App.jsx with SocketProvider**
-
-```jsx
-// social/client/src/App.jsx
+```javascript
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.jsx";
+import { BrowserRouter } from "react-router-dom";
+import { Provider } from "react-redux";
+import { store } from "./redux/store.js";
 import { SocketProvider } from "./context/SocketContext.jsx";
-import ConversationList from "./components/ConversationList.jsx";
-import ChatWindow from "./components/ChatWindow.jsx";
 
-// ...
-function App() {
-  // ...
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <BrowserRouter>
+      <Provider store={store}>
+        <SocketProvider>
+          <App />
+        </SocketProvider>
+      </Provider>
+    </BrowserRouter>
+  </StrictMode>
+);
+```
+
+---
+
+### Step 5: Create Chat Components
+
+#### `ChatList.jsx`
+
+```javascript
+import React, { useEffect, useState } from "react";
+import { getAllConversations } from "../../apiCalls/authCalls";
+import { useSocket } from "../context/SocketContext";
+
+const ChatList = ({ onSelectUser }) => {
+  const [conversations, setConversations] = useState([]);
+  const { onlineUsers } = useSocket();
+
+  useEffect(() => {
+    (async () => setConversations(await getAllConversations()))();
+  }, []);
+
   return (
-    <SocketProvider>
-      <Routes>
-        {/* other routes */}
-        <Route path="/messages" element={<ConversationList />} />
-        <Route path="/chat/:conversationId" element={<ChatWindow />} />
-      </Routes>
-    </SocketProvider>
+    <div className="w-full h-full overflow-y-auto bg-white">
+      <div className="p-4 border-b">
+        <h2 className="text-xl font-bold">Messages</h2>
+      </div>
+      <div className="divide-y">
+        {conversations.map((conv) => (
+          <div
+            key={conv._id._id}
+            onClick={() => onSelectUser(conv._id)}
+            className="p-4 hover:bg-gray-50 cursor-pointer flex items-center gap-3"
+          >
+            <div className="relative">
+              <img
+                src={conv._id.profileImage || "/default-avatar.png"}
+                alt={conv._id.userName}
+                className="w-12 h-12 rounded-full object-cover"
+              />
+              {onlineUsers.has(conv._id._id) && (
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+              )}
+            </div>
+            <div>
+              <h3 className="font-semibold">{conv._id.name}</h3>
+              <p className="text-sm text-gray-600">@{conv._id.userName}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
-}
-```
+};
 
-> **Pitfall:** Forgetting to wrap your app with `SocketProvider` will break `useSocket`.
-
----
-
-## **5. REST API Routes**
-
-### **Summary of API Endpoints**
-
-| **Method** | **Endpoint**                    | **Description**                | **Auth** |
-| ---------- | ------------------------------- | ------------------------------ | -------- |
-| GET        | `/api/conversations`            | Get all user's conversations   | ✅        |
-| POST       | `/api/conversations`            | Create/get 1-on-1 conversation | ✅        |
-| POST       | `/api/conversations/group`      | Create group conversation      | ✅        |
-| GET        | `/api/conversations/:id`        | Get conversation by ID         | ✅        |
-| GET        | `/api/messages/:conversationId` | Get messages (paginated)       | ✅        |
-| POST       | `/api/messages`                 | Send message (fallback)        | ✅        |
-| POST       | `/api/messages/upload`          | Upload media file              | ✅        |
-| DELETE     | `/api/messages/:messageId`      | Delete message                 | ✅        |
-
----
-
-### **API Examples**
-
-#### **Create Conversation**
-
-```http
-POST /api/conversations
-Content-Type: application/json
-
-{
-  "participantId": "507f1f77bcf86cd799439011"
-}
-```
-
-**Response**
-
-```json
-{
-  "_id": "507f191e810c19729de860ea",
-  "participants": [
-    { "_id": "507f1f77bcf86cd799439011", "userName": "john_doe" },
-    { "_id": "507f1f77bcf86cd799439012", "userName": "jane_smith" }
-  ],
-  "isGroup": false
-}
-```
-
-#### **Get Messages**
-
-```http
-GET /api/messages/507f191e810c19729de860ea?page=1&limit=50
-```
-
-**Response**
-
-```json
-{
-  "messages": [
-    {
-      "_id": "507f191e810c19729de860eb",
-      "text": "Hello!",
-      "status": "read"
-    }
-  ],
-  "totalPages": 1,
-  "currentPage": 1,
-  "hasMore": false
-}
+export default ChatList;
 ```
 
 ---
 
-## **6. Realtime Features**
+#### `ChatWindow.jsx`
 
-### **6.1 Typing Indicator**
-
-* Client emits `chat:typing`
-* Server broadcasts to room
-* Typing timeout clears after 2 s
-
-### **6.2 Read Receipts & Delivery Confirmation**
-
-Flow: **Sent → Delivered → Read**
-Icons: ⏳ sent  ✓ sent  ✓✓ delivered  **blue ✓✓ read**
-
-### **6.3 Online/Offline Presence**
-
-* Server updates `User.online` and `lastSeen`
-* Emits `user:online` / `user:offline`
-* Client updates `onlineUsers` Set
-
-### **6.4 Optimistic Updates**
-
-* Temporary IDs (e.g., `temp_12345`)
-* Show message instantly → replace on server ack
-* Remove failed temp messages
-
-### **6.5 Automatic Reconnection & Sync**
-
-Socket.IO handles auto-reconnect; on `reconnect` → re-join room + re-fetch messages.
-Offline queue can store unsent messages in `localStorage`.
+*(Full implementation retained as in original document.)*
 
 ---
 
-## **7. Security & Optimization**
-
-### **7.1 JWT Validation**
-
-* Validate token on server, not client.
-* Attach `userId` to `socket`.
-
-### **7.2 CORS Configuration**
-
-Allow only frontend origin in Socket.IO and Express CORS options.
-
-### **7.3 Rate Limiting & Throttling**
-
-* Max 20 messages/min per user.
-* Typing events throttled (1 per second).
-
-### **7.4 Message Deduplication**
-
-Track `tempId` to ignore duplicates.
-
-### **7.5 Redis Adapter for Scaling**
-
-```bash
-npm install @socket.io/redis-adapter redis
-```
-
-Redis syncs rooms across instances → enables horizontal scaling.
-
-### **7.6 Database Indexing**
-
-Verify indexes in Mongo shell:
+#### `MessagesPage.jsx`
 
 ```javascript
-db.messages.getIndexes()
-db.conversations.getIndexes()
+import React, { useState } from "react";
+import ChatList from "../components/ChatList";
+import ChatWindow from "../components/ChatWindow";
+
+const MessagesPage = () => {
+  const [selectedUser, setSelectedUser] = useState(null);
+  return (
+    <div className="h-screen flex">
+      <div className="w-1/3 border-r">
+        <ChatList onSelectUser={setSelectedUser} />
+      </div>
+      <div className="flex-1">
+        <ChatWindow selectedUser={selectedUser} />
+      </div>
+    </div>
+  );
+};
+
+export default MessagesPage;
 ```
 
 ---
 
-## **8. Testing the Chat Feature**
+## 🧪 Testing the Implementation
 
-### **8.1 Run App**
+1. **Start the server**
 
-**Backend**
+   ```bash
+   cd social/server
+   npm run dev
+   ```
 
-```bash
-cd social/server
-npm run dev
-```
+2. **Start the client**
 
-**Frontend**
+   ```bash
+   cd social/client
+   npm run dev
+   ```
 
-```bash
-cd social/client
-npm run dev
-```
+3. **Test features**
 
----
-
-### **8.2 Testing Checklist**
-
-* ✅ Users sign in
-* ✅ Socket connects
-* ✅ Online/offline status updates
-* ✅ Messages send + receive real-time
-* ✅ Typing indicator works
-* ✅ Read receipts update
-* ✅ Reconnection restores chat
+   * Login with two different users in different browsers
+   * Navigate to the messages page
+   * Send messages and verify real-time delivery
+   * Check typing indicators, read receipts, and online/offline status
 
 ---
 
-### **8.3 Multi-Tab Test**
+## ✅ Key Features Implemented
 
-Open two browsers → User A & User B → send messages and observe real-time behavior and presence changes.
-
----
-
-### **8.4 Debugging Tips**
-
-In DevTools:
-
-```javascript
-window.socket.onAny((event, ...args) => console.log(event, args));
-```
-
-Server-side add `socket.onAny` logging to trace events.
+* Real-time message delivery
+* Online/offline status tracking
+* Typing indicators
+* Message history
+* Read receipts
+* Conversation list
+* Authentication with Socket.IO
 
 ---
 
-## **9. Future Enhancements**
+## ⚙️ Common Issues & Solutions
 
-### **9.1 Push Notifications**
-
-* Integrate **Firebase Cloud Messaging** (FCM).
-* Send push to offline users.
-
-### **9.2 File Previews & Media Compression**
-
-* Use `browser-image-compression`.
-* Show preview thumbnail before sending.
-
-### **9.3 Voice/Video Calls via WebRTC**
-
-* Use `simple-peer` for peer connections.
-* Exchange SDP signals through Socket.IO.
-
-### **9.4 Message Reactions & Replies**
-
-* Add `reactions: [{ user, emoji }]` in schema.
-* New socket event `message:react`.
-
-### **9.5 Admin Moderation**
-
-* Support delete-for-everyone events.
-* Add `deletedFor` array in schema (if needed).
+| Issue                      | Possible Fix                            |
+| -------------------------- | --------------------------------------- |
+| **Socket not connecting**  | Verify token handling and CORS settings |
+| **Messages not showing**   | Check MongoDB connection & user auth    |
+| **Typing indicator stuck** | Ensure typing timeout clears correctly  |
 
 ---
 
-## **10. Complete Integration Summary**
+## 🚀 Next Steps (Optional Enhancements)
 
-### **Architecture Recap**
+* Add image/file sharing
+* Add emoji picker
+* Add message deletion
+* Add group chat
+* Add voice/video calls
+* Add message search
+* Add notifications
 
-```
-CLIENT → React + SocketProvider + useChat
-     ↕
-WebSocket / HTTP
-     ↕
-SERVER → Express + Socket.IO + MongoDB
-```
+---
 
-### **Key Files
+**Happy Coding! 🎉**
 
+---
+
+Would you like me to generate a **downloadable `.md` file** version of this now?
