@@ -1,4 +1,3 @@
-Here’s your **Full Stack Social Media App Deployment Guide** formatted cleanly in **Markdown** — ready for documentation or upload to GitHub, Notion, or any README file:
 
 ---
 
